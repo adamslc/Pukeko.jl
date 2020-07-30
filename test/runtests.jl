@@ -105,4 +105,16 @@ module OnlyCallFunctions
 end
 Pukeko.run_tests(OnlyCallFunctions)
 
+module TimingTest
+    using Pukeko
+    function test_fast()
+        @test 1 + 1 == 2
+    end
+    function test_slow()
+        sleep(0.5)
+        @test 1 * 1 == 1
+    end
+end
+Pukeko.run_tests(TimingTest, timing=true)
+
 include("base_int.jl")
