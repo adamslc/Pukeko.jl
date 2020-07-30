@@ -149,7 +149,7 @@ Configuration options:
     contain `exclude_name` in their names.
 """
 function run_tests(module_to_test::Module;
-    fail_fast::Bool=false, timing::Bool=false,
+    fail_fast::Bool=false, timing::Bool=false, color::Bool=true,
     match_name::Union{AbstractString, Nothing}=nothing,
     exclude_name::Union{AbstractString, Nothing}=nothing)
     # Parse commandline arguments.
@@ -225,20 +225,27 @@ function run_tests(module_to_test::Module;
         end
         test_elapsed_time[maybe_function_name] = time_ns() - start_time
     end
+    error_color = color ? Base.error_color() : :normal
+    success_color = color ? :green : :normal
+    timing_color = color ? :light_black : :normal
+    function_plural = test_functions != 1 ? "s" : ""
     # At least one test function failed, print out the exceptions.
     if length(test_failures) > 0
-        println("Test failures occurred in module $(module_name)")
-        println("Functions with failed tests:")
+        printstyled("[ ERROR ] ", color=error_color, bold=true)
+        println("$(module_name): ",
+                "$(length(test_failures))/$(test_functions) function",
+                function_plural, " failed:")
         for (function_name, test_exception) in test_failures
-            println("    $(function_name): ", test_exception)
+            println("          $(function_name): ", test_exception)
         end
         error("Some tests failed!")
     end
     # All passed, output statistics.
+    printstyled("[SUCCESS] ", color=success_color, bold=color)
+    print("$(module_name): ran $(test_functions) function", function_plural)
     total_time = sum(values(test_elapsed_time))
-    println("$(test_functions) test function(s) ran successfully ",
-            "in module $(module_name) ",
-            @sprintf("(%.2f seconds)", total_time / 1e9))
+    timing_string = @sprintf(" (%.2f seconds)\n", total_time / 1e9)
+    printstyled(timing_string, color=timing_color)
     if timing
         # Sort by run time, descending.
         time_names = [(elapsed, function_name)
@@ -247,7 +254,7 @@ function run_tests(module_to_test::Module;
         for (elapsed, function_name) in time_names
             gc_diff = Base.GC_Diff(test_end_mem[function_name],
                                    test_start_mem[function_name])
-            print(function_name, ": ")
+            print("          ", function_name, ":")
             Base.time_print(elapsed, gc_diff.allocd, gc_diff.total_time,
                             Base.gc_alloc_count(gc_diff))
             println()
